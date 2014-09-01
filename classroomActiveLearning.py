@@ -61,6 +61,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
             df['SNtex']=df.apply(lambda dd: dd.firstName+r' {\bf '+dd.lastName+ r'}',axis=1)
             df['SNhtml']=df.apply(lambda dd: dd.firstName+r' <b> '+dd.lastName+ r'</b>',axis=1)
         df['studentName']=df['Student Name']
+        df['ID']=df.ID.map(str)
         # Shuffle it.
         from random import shuffle
         ii=range(len(df))
@@ -138,14 +139,35 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         #os.system("""zenity --title "" --info --text " """+html+' " ') #<span foreground='blue' font='32'>%s</span>" """%astudent)
  
 if __name__ == '__main__':
+    import argparse
 
-    import sys
-    if len(sys.argv)==2:
-        classlistfile=sys.argv[1]
-    else:
-        classlistfile=chooseClassListFile() # Defaults are hardcoded in there.
-    ct=cpblClassroomTools(classlistfile=classlistfile)
-#    ct.randomlyAssignGroups(3)
-#    ct.randomlyAssignGroups(4)
-    ct.randomlyAssignGroups(10)
-    #ct.randomlyChooseOneStudent()
+    parser = argparse.ArgumentParser(description='Various desktop pop-up tools for interactive classes.')
+    parser.add_argument('-c','--classlist', #, metavar=None, type=str, nargs='1',
+                        action='store',
+                        help='A csv file containing data on the class list')
+    parser.add_argument('--choose-student',#,  type=int, nargs='+',
+                        action='store_true',
+                       help=' Display one student name, and record the name for subsequent grading')
+    parser.add_argument('-s', '--record-score', #-choose-student',#,  type=int, nargs='+',
+                        action='store',
+                       help=' Save a mark, associated with the recently displayed individual')
+    #parser.add_argument('--sum', dest='accumulate', action='store_const',
+    #                   const=sum, default=max,
+    #                   help='sum the integers (default: find the max)')
+
+    args = parser.parse_args()
+    ct=cpblClassroomTools(classlistfile=args.classlist)
+
+    if args.choose_student:
+        ct.randomlyChooseOneStudent()
+    elif args.record_score is not None:
+        recordGradeForLastStudent(args.record_score)
+    else: # Demo
+
+        ct=cpblClassroomTools(classlistfile=classlistfile)
+    #    ct.randomlyAssignGroups(3)
+    #    ct.randomlyAssignGroups(4)
+        ct.randomlyAssignGroups(10)
+        #ct.randomlyChooseOneStudent()
+
+
