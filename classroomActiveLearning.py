@@ -4,7 +4,10 @@ Randomly choose a student from the class list, and pop-up their name using opera
 
 Assign this to a hotkey for easy access during class.
 
-TO DO: Also assign some other keys to assign a grade of 1 to 3, say, for evaluating a student's response. Store list of who was asked, and how they did, in a database somewhere.
+TO DO:
+ -  Also assign some other keys to assign a grade of 1 to 3, say, for evaluating a student's response. Store list of who was asked, and how they did, in a database somewhere.
+ - Record every assignment made by its date
+ - algorithm for dealing with uneven group sizes is not good. e.g. splitting up 27 people into groups of 10 gives 11, 11, and 5.
 
 What formats of student names does it recognize?
  - columns named firstName and lastName
@@ -13,6 +16,8 @@ What formats of student names does it recognize?
 """
 import pandas as pd
 import os
+
+GRADES_FILE='/home/cpbl/courses/activeLearningGrades.tsv'
 
 def chooseClassListFile():
     """
@@ -25,6 +30,11 @@ def chooseClassListFile():
     else:
         classlistfile='/home/cpbl/courses/swb/classlist.csv'
     return(classlistfile)
+
+def recordGradeForLastStudent(thegrade):
+    with open(GRADES_FILE,'at') as ff:
+        ff.write('\t'+str(thegrade))
+
         
 
 ###########################################################################################
@@ -39,6 +49,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
 
         if classlistfile is None:
             classlistfile=chooseClassListFile()
+        self.classlistfile=classlistfile
         """
         Shuffling the classlist initially to make remaining routines simpler
         """
@@ -49,6 +60,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
             df['lastName']=df['Student Name'].map(lambda ss: ss.split(',')[0].strip())
             df['SNtex']=df.apply(lambda dd: dd.firstName+r' {\bf '+dd.lastName+ r'}',axis=1)
             df['SNhtml']=df.apply(lambda dd: dd.firstName+r' <b> '+dd.lastName+ r'</b>',axis=1)
+        df['studentName']=df['Student Name']
         # Shuffle it.
         from random import shuffle
         ii=range(len(df))
@@ -59,8 +71,12 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         if 0:
             df=self.classlist
             import numpy as np
-            astudent= df.ix[np.random.choice(df.index, 1)]['Student Name'].values[0]
-        astudent=self.classlist.iloc[0]['Student Name']
+            astudent= df.ix[np.random.choice(df.index, 1)]['studentName'].values[0]
+        astudent=self.classlist.iloc[0]['studentName']
+        import time
+        now = time.strftime("%c")
+        with open(GRADES_FILE,'at') as ff:
+            ff.write('\n'+'\t'.join([now,self.classlistfile,self.classlist.iloc[0]['studentName'],self.classlist.iloc[0]['ID']]))
         os.system("""zenity --title "" --info --text "<span foreground='blue' font='32'>%s</span>"   & """%astudent)
 
     def randomlyAssignGroups(self,groupsize=3):
@@ -78,6 +94,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         df['groupName']=''
         # Groups are named by letter
         groupnames='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
+        groupnames=list(groupnames) + [ii+jj for ii in groupnames for jj in groupnames]
         ii=0
         while ii<len(df):
             x=   (len(df)-ii)   %    groupsize
@@ -89,14 +106,25 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
             groupnames=groupnames[1:]
         html=''
         tex=r"""\documentclass{article}\begin{document} """
-        tex=r"""\documentclass{beamer}\usepackage[utf8]{inputenc}\begin{document}\begin{frame}
-        """
-        for gg, ss in df.groupby('groupName')['SNtex']:
+        tex=r"""\documentclass{beamer}\usepackage[utf8]{inputenc}\begin{document}\begin{frame}[allowframebreaks]  """
+        closing='\n'+r'\end{document}'+'\n'
+        closing='\n'+r'\end{frame}\end{document}'+'\n'
+        tex=r"""
+\documentclass{article}
+\usepackage[utf8]{inputenc}
+\usepackage{color}
+\usepackage{lscape}
+\usepackage[landscape,margin=0cm]{geometry}
+\begin{document} 
+%\begin{landscape} 
+\huge
+"""
+        closing='\n'+ r""" \end{document}""" +'\n'
+        for gg, ss in df.groupby('groupName',sort=False)['SNtex']:
             html+=""" <table><tr><td>"""+gg+"""</td><td>"""+ss.values[0]+'</td></tr>'+  ''.join([ '<tr><td></td><td>'+nn+'</td></tr>' for nn in ss.values[1:]])+"""</table>"""
             tex+=r' \begin{tabular}{|rl|}\hline  {\bf\color{blue} '+gg+':} & '+ss.values[0]+r' \\'+' \n'+  ''.join([ ' & '+nn+r' \\ ' for nn in ss.values[1:]])+ r' \hline \end{tabular}'+' \n'
         print(html)
-        #tex+='\n'+r'\end{document}'+'\n'
-        tex+='\n'+r'\end{frame}\end{document}'+'\n'
+        tex+=closing
         import codecs
         DDR='/home/cpbl/tmp/'
         with codecs.open(DDR+'tmpGroups.tex','wt',encoding='utf8') as ff:
@@ -117,7 +145,7 @@ if __name__ == '__main__':
     else:
         classlistfile=chooseClassListFile() # Defaults are hardcoded in there.
     ct=cpblClassroomTools(classlistfile=classlistfile)
-    ct.randomlyAssignGroups(3)
-    ct.randomlyAssignGroups(4)
-    ct.randomlyAssignGroups(5)
+#    ct.randomlyAssignGroups(3)
+#    ct.randomlyAssignGroups(4)
+    ct.randomlyAssignGroups(10)
     #ct.randomlyChooseOneStudent()
