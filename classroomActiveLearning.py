@@ -34,8 +34,8 @@ def chooseClassListFile():
 def recordGradeForLastStudent(thegrade):
     with open(GRADES_FILE,'at') as ff:
         ff.write('\t'+str(thegrade))
+    os.system(' play /usr/share/sounds/KDE-K3B-Finish-Success.ogg &')
 
-        
 
 ###########################################################################################
 ###
@@ -73,7 +73,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
             df=self.classlist
             import numpy as np
             astudent= df.ix[np.random.choice(df.index, 1)]['studentName'].values[0]
-        astudent=self.classlist.iloc[0]['studentName']
+        astudent=self.classlist.iloc[0]['SNhtml']
         import time
         now = time.strftime("%c")
         with open(GRADES_FILE,'at') as ff:
