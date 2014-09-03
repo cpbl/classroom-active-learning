@@ -1,13 +1,11 @@
 #!/usr/bin/python
 """
+Several functions. See -h output.
+
+Assign the 1-student function and the submit-grades functions to a hotkey for easy access during class.
 Randomly choose a student from the class list, and pop-up their name using operating system Desktop notification.
 
-Assign this to a hotkey for easy access during class.
-
-TO DO:
- -  Also assign some other keys to assign a grade of 1 to 3, say, for evaluating a student's response. Store list of who was asked, and how they did, in a database somewhere.
- - Record every assignment made by its date
- - algorithm for dealing with uneven group sizes is not good. e.g. splitting up 27 people into groups of 10 gives 11, 11, and 5.
+On the size-N algorithm: I want each group to be at least size N, and hopefully not much larger. So no orphan/small groups. Now implemented, along with N groups of roughly equal size.
 
 What formats of student names does it recognize?
  - columns named firstName and lastName
@@ -36,7 +34,7 @@ def recordGradeForLastStudent(thegrade):
         ff.write('\t'+str(thegrade))
     os.system(' play /usr/share/sounds/KDE-K3B-Finish-Success.ogg &')
 
-def nChunks(l, n):
+def nChunks(l, n): # From SO, modified
     """ Yield n successive chunks from l.
     Works for lists,  pandas dataframes, etc
     """
@@ -44,6 +42,12 @@ def nChunks(l, n):
     for i in xrange(0, n-1):
         yield l[i*newn:i*newn+newn]
     yield l[n*newn-newn:]
+def chunksOfSizeN(l,N):
+    """
+    To instead yield nearly-equal sized chunks of size <=N, use nChunks(
+    """
+    return(nChunks(l,   N/l)) # floor(N/l) in python 3?
+
 
 ###########################################################################################
 ###
@@ -116,20 +120,25 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         # Groups are named by letter
         groupnames='ABCDEFGHIJKLMNOPQRSTUVWXYZ'
         groupnames=list(groupnames) + [ii+jj for ii in groupnames for jj in groupnames]
+
         if numbergroups is None:
-            ii=0
-            while ii<len(df):
-                x=   (len(df)-ii)   %    groupsize
-                thisN=groupsize + 1*(x>0)
-                df['groupName'].iloc[ii:ii+thisN]=groupnames[0]
-                #df[ii:(ii+thisN)]['groupName']=groupnames[0]
-                #fooo
-                ii=ii+thisN
-                groupnames=groupnames[1:]
-        else: # Number of groups (not size) is specified
-            # Just grab the indices from the chunked dfs:
-            for ii,adf in  enumerate(nChunks(df,numbergroups)):
-                df['groupName'].iloc[adf.index]=groupnames[ii]
+            groupsize,numbergroups = None,len(df)/groupsize
+
+
+#            ii=0
+#            while ii<len(df):
+#                x=   (len(df)-ii)   %    groupsize
+#                thisN=groupsize + 1*(x>0)
+#                df['groupName'].iloc[ii:ii+thisN]=groupnames[0]
+#                #df[ii:(ii+thisN)]['groupName']=groupnames[0]
+#                #fooo
+#                ii=ii+thisN
+#                groupnames=groupnames[1:]
+        assert numbergroups is not None
+        # Number of groups (not size) is specified
+        # Just grab the indices from the chunked dfs:
+        for ii,adf in  enumerate(nChunks(df,numbergroups)):
+            df['groupName'].iloc[adf.index]=groupnames[ii]
 
         html=''
         tex=r"""\documentclass{article}\begin{document} """
