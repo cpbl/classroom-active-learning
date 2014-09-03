@@ -33,6 +33,8 @@ def recordGradeForLastStudent(thegrade):
     with open(GRADES_FILE,'at') as ff:
         ff.write('\t'+str(thegrade))
     os.system(' play /usr/share/sounds/KDE-K3B-Finish-Success.ogg &')
+    # Close the (zenity) window  (make sure wmctrl is installed) showing the student name
+    os.system("wmctrl -F -c 'ActiveLearning:1student'")
 
 def nChunks(l, n): # From SO, modified
     """ Yield n successive chunks from l.
@@ -96,7 +98,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         now = time.strftime("%c")
         with open(GRADES_FILE,'at') as ff:
             ff.write('\n'+'\t'.join([now,self.classlistfile,self.classlist.iloc[0]['studentName'],self.classlist.iloc[0]['ID']]))
-        os.system("""zenity --title "" --info --text "<span foreground='blue' font='32'>%s</span>"   & """%astudent)
+        os.system("""zenity --title "ActiveLearning:1student" --info --text "<span foreground='blue' font='32'>%s</span>"   & """%astudent)
 
     def randomlyAssignGroups(self,groupsize=None,numbergroups=None):
         """
