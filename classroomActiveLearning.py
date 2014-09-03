@@ -121,9 +121,12 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
 \huge
 """
         closing='\n'+ r""" \end{document}""" +'\n'
+        ngroups=0
         for gg, ss in df.groupby('groupName',sort=False)['SNtex']:
             html+=""" <table><tr><td>"""+gg+"""</td><td>"""+ss.values[0]+'</td></tr>'+  ''.join([ '<tr><td></td><td>'+nn+'</td></tr>' for nn in ss.values[1:]])+"""</table>"""
-            tex+=r' \begin{tabular}{|rl|}\hline  {\bf\color{blue} '+gg+':} & '+ss.values[0]+r' \\'+' \n'+  ''.join([ ' & '+nn+r' \\ ' for nn in ss.values[1:]])+ r' \hline \end{tabular}'+' \n'
+            tex+=r' \begin{tabular}{|rl|}\hline  {\bf\color{blue} '+gg+':} & '+ss.values[0]+r' \\'+' \n'+  ''.join([ ' & '+nn+r' \\ ' for nn in ss.values[1:]])+ r' \hline \end{tabular}'+' \n' + (ngroups%3)*r' \\ '
+            ngroups+=1
+
         print(html)
         tex+=closing
         import codecs
@@ -151,6 +154,9 @@ if __name__ == '__main__':
     parser.add_argument('-s', '--record-score', #-choose-student',#,  type=int, nargs='+',
                         action='store',
                        help=' Save a mark, associated with the recently displayed individual')
+    parser.add_argument('-n', '--assign-groups-by-size', type=int, # nargs='+',
+                        action='store',
+                       help=' Display one student name, and record the name for subsequent grading')
     #parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                   const=sum, default=max,
     #                   help='sum the integers (default: find the max)')
@@ -162,6 +168,8 @@ if __name__ == '__main__':
         ct.randomlyChooseOneStudent()
     elif args.record_score is not None:
         recordGradeForLastStudent(args.record_score)
+    elif args.assign_groups_by_size is not None:
+        ct.randomlyAssignGroups(args.assign_groups_by_size)
     else: # Demo
 
         ct=cpblClassroomTools(classlistfile=classlistfile)
