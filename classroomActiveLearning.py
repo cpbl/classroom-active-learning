@@ -123,9 +123,9 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         closing='\n'+ r""" \end{document}""" +'\n'
         ngroups=0
         for gg, ss in df.groupby('groupName',sort=False)['SNtex']:
-            html+=""" <table><tr><td>"""+gg+"""</td><td>"""+ss.values[0]+'</td></tr>'+  ''.join([ '<tr><td></td><td>'+nn+'</td></tr>' for nn in ss.values[1:]])+"""</table>"""
-            tex+=r' \begin{tabular}{|rl|}\hline  {\bf\color{blue} '+gg+':} & '+ss.values[0]+r' \\'+' \n'+  ''.join([ ' & '+nn+r' \\ ' for nn in ss.values[1:]])+ r' \hline \end{tabular}'+' \n' + (ngroups%3)*r' \\ '
             ngroups+=1
+            html+=""" <table><tr><td>"""+gg+"""</td><td>"""+ss.values[0]+'</td></tr>'+  ''.join([ '<tr><td></td><td>'+nn+'</td></tr>' for nn in ss.values[1:]])+"""</table>"""
+            tex+=r' \begin{tabular}{|rl|}\hline  {\bf\color{blue} '+gg+':} & '+ss.values[0]+r' \\'+' \n'+  ''.join([ ' & '+nn+r' \\ ' for nn in ss.values[1:]])+ r' \hline \end{tabular}'+' \n' + (ngroups%3==0)*r'\\ '
 
         print(html)
         tex+=closing
