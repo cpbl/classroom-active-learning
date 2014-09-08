@@ -36,14 +36,42 @@ def recordGradeForLastStudent(thegrade):
     # Close the (zenity) window  (make sure wmctrl is installed) showing the student name
     os.system("wmctrl -F -c 'ActiveLearning:1student'")
 
-def nChunks(l, n): # From SO, modified
+def nChunks(l, n): # From SO, modified. FAILS!! e.g. l=22, n=6: bad allocation.
     """ Yield n successive chunks from l.
     Works for lists,  pandas dataframes, etc
+
+    list length N. into n groups.
+    minimum size is floorsize=floor(N/n)
+    average surplus needed on remaining groups: avgsurplus=(N-n*floorsize)/(n-n0)
+    to assign to this group: ceil(avgsurplus)
+    Use recursion!? Not sure how, with yield
+
+    2014 Sept: S.O. version nchunks or whatever is crap! I have written my own below.
     """
-    newn = int(1.0 * len(l) / n + 0.5)
-    for i in xrange(0, n-1):
-        yield l[i*newn:i*newn+newn]
-    yield l[n*newn-newn:]
+    import math
+    remaining=len(l)
+    floorsize=int(remaining/n) # int=floor?
+    for ig in xrange(0,n-1):
+        surplus=int(math.ceil(  (remaining-(n-ig)*floorsize )*1.0/(n-ig) ))
+        #print(remaining,floorsize,surplus,ig)
+        ifrom,ito=len(l)-remaining , len(l)-remaining +floorsize+surplus
+        remaining=remaining-floorsize-surplus
+        yield l[ifrom:ito]
+    yield l[len(l)-remaining:]
+    if 0:
+        fooey
+        for i in xrange(0, n-1):
+            newn = int(1.0 * (len(l)-sofar) / n + 0.5)
+            sofar+=newn
+            yield l[i*newn:i*newn+newn]
+        yield l[n*newn-newn:]
+
+        sofar=0
+        for i in xrange(0, n-1):
+            newn = int(1.0 * (len(l)-sofar) / n + 0.5)
+            sofar+=newn
+            yield l[i*newn:i*newn+newn]
+        yield l[n*newn-newn:]
 def chunksOfSizeN(l,N):
     """
     To instead yield nearly-equal sized chunks of size <=N, use nChunks(
@@ -155,6 +183,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         # Just grab the indices from the chunked dfs:
         for ii,adf in  enumerate(nChunks(df,numbergroups)):
             df['groupName'].iloc[adf.index]=groupnames[ii]
+        df=df.sort('groupName')
 
         html=''
         tex=r"""\documentclass{article}\begin{document} """
