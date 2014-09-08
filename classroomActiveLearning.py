@@ -67,7 +67,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         """
         Shuffling the classlist initially to make remaining routines simpler
         """
-        df=pd.read_csv(classlistfile,skiprows=8,encoding='iso-8859-1',index_col=False)
+        df=self.loadClassList(self.classlistfile)
         # Process first, last names
         if "Student Name" in df:
             df['firstName']=df['Student Name'].map(lambda ss: ss.split(',')[1].strip())
@@ -82,6 +82,20 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         shuffle(ii)
         self.classlist=df.reindex(ii)
         self.writeEmailList()
+    def loadClassList(self,clfile):
+        # Clean up file a little before parsing
+        import codecs
+        LL=[LL.strip('\n') for LL in codecs.open(clfile,'rt',encoding='iso-8859-1').readlines() if LL.strip('\n')]
+        tmpfn='/home/cpbl/tmp/tmpClasslistfile'
+        startrow=[ii for ii in range(len(LL)) if 'Student Name' in LL[ii] or 'Email' in LL[ii]][0]
+        with codecs.open(tmpfn,'wt',encoding='iso-8859-1') as ff:
+            ff.write('\n'.join(LL[startrow:])+'\n')
+
+        # Load classlist (modified a bit)
+        #df=pd.read_csv(tmpfn,skiprows=8,encoding='iso-8859-1',index_col=False)
+        df=pd.read_csv(tmpfn,encoding='iso-8859-1',index_col=False)
+        return(df)
+
     def writeEmailList(self):
         if 'classlist.csv' in self.classlistfile:
             with open(self.classlistfile.replace('classlist.csv','classemails.txt'),'wt') as ff:
