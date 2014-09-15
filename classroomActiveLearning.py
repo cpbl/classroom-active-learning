@@ -11,18 +11,28 @@ What formats of student names does it recognize?
  - columns named firstName and lastName
  - one column called "Student Name" with content formatted "last name, first name"
 
+To do:
+- set up keystroke to indicate someone is absent today?
+- avoid repeating someone who was just called in the last few?
+
 """
 import pandas as pd
 import os
 
 GRADES_FILE='/home/cpbl/courses/activeLearningGrades.tsv'
+if not os.path.exists(GRADES_FILE):
+    with open(GRADES_FILE,'at') as ff:
+        ff.write('Date	classfile	studentName	studentID	grade	grade2	grade3	grade4	grade5	grade6\n')
+        ff.write('dummyDate	dummyclassfile	dummystudentName	dummystudentID	dummygrade	dummygrade2	dummygrade3	dummygrade4	dummygrade5	dummygrade6\n')
+
+import time # Wow. "%c" format isn't even consistent between python and ipython on my own system!!
+now = time.strftime('%Y %b %d %a %j %H:%M:%S %Z')  # time.strftime("%c")
+AVOID_PREVIOUS_N_STUDENTS=3
 
 def chooseClassListFile():
     """
     Some custom specification of the class list default, if not given on command line
     """
-    import time
-    now = time.strftime("%c")
     if "Tue" in now or "Thu" in now:
         classlistfile='/home/cpbl/courses/201/classlist.csv'
     else:
@@ -35,6 +45,14 @@ def recordGradeForLastStudent(thegrade):
     os.system(' play /usr/share/sounds/KDE-K3B-Finish-Success.ogg &')
     # Close the (zenity) window  (make sure wmctrl is installed) showing the student name
     os.system("wmctrl -F -c 'ActiveLearning:1student'")
+def  markLastStudentAbsent():
+    recordGradeForLastStudent('A')
+
+def loadGradeLogFromToday(): # Return a dataframe with students called today, in order.
+    df=pd.read_table(GRADES_FILE, sep='\t')#, dialect=None, compression=None, doublequote=True, escapechar=None, quotechar='"', quoting=0, skipinitialspace=False, lineterminator=None, header='infer', index_col=None, names=None, prefix=None, skiprows=None, skipfooter=None, skip_footer=0, na_values=None, na_fvalues=None, true_values=None, false_values=None, delimiter=None, converters=None, dtype=None, usecols=None, engine='c', delim_whitespace=False, as_recarray=False, na_filter=True, compact_ints=False, use_unsigned=False, low_memory=True, buffer_lines=None, warn_bad_lines=True, error_bad_lines=True, keep_default_na=True, thousands=None, comment=None, decimal='.', parse_dates=False, keep_date_col=False, dayfirst=False, date_parser=None, memory_map=False, nrows=None, iterator=False, chunksize=None, verbose=False, encoding=None, squeeze=False, mangle_dupe_cols=True, tupleize_cols=False, infer_datetime_format=False)
+    todays=df[df.Date.map(lambda ss: isinstance(ss,str) and ss[:11]==now[:11])]
+    return(todays)
+    
 
 def nChunks(l, n): # From SO, modified. FAILS!! e.g. l=22, n=6: bad allocation.
     """ Yield n successive chunks from l.
@@ -130,14 +148,23 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
                 ff.write('  '.join(self.classlist['Email'].values))
 
     def randomlyChooseOneStudent(self):
-        #import pandas as pd
+        """
+        Pick a student randomly, but! avoid those marked as absent today, and those called in the previous AVOID_PREVIOUS_N_STUDENTS=3 calls.
+        """
         if 0:
             df=self.classlist
             import numpy as np
             astudent= df.ix[np.random.choice(df.index, 1)]['studentName'].values[0]
-        astudent=self.classlist.iloc[0]['SNhtml']
-        import time
-        now = time.strftime("%c")
+        todays=loadGradeLogFromToday()
+        toAvoid=pd.concat([   todays[todays.grade.isin(['A'])], todays.iloc[::-1][:AVOID_PREVIOUS_N_STUDENTS]  ])
+        #print('Avoiding ',str(toAvoid.studentID.values))
+        eligible=self.classlist[-self.classlist.ID.isin(toAvoid.studentID)]
+        dropped=self.classlist[self.classlist.ID.isin(toAvoid.studentID)]
+        print('Avoided %d students as ineligible due to being absent or recently picked.'%(len(self.classlist)-len(eligible)))
+        #astudent=self.classlist.iloc[0]['SNhtml']
+        astudent=eligible.iloc[0]['SNhtml']
+        print(astudent+' cannot be in ')
+        print(toAvoid.studentName.values)
         with open(GRADES_FILE,'at') as ff:
             ff.write('\n'+'\t'.join([now,self.classlistfile,self.classlist.iloc[0]['studentName'],self.classlist.iloc[0]['ID']]))
         os.system("""zenity --title "ActiveLearning:1student" --info --text "<span foreground='blue' font='32'>%s</span>"   & """%astudent)
@@ -239,7 +266,10 @@ if __name__ == '__main__':
                        help=' Assign students into groups of size n (or as close as possible)')
     parser.add_argument('-g', '--assign-into-groups', type=int, # nargs='+',
                         action='store',
-                       help=' Assign students into G groups of roughly equal size)')
+                       help=' Assign students into G groups of roughly equal size')
+    parser.add_argument('-a', '--mark-absent', 
+                        action='store_true',
+                       help=' Mark the most recently displayed individual as absent today')
     #parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                   const=sum, default=max,
     #                   help='sum the integers (default: find the max)')
@@ -249,6 +279,8 @@ if __name__ == '__main__':
 
     if args.choose_student:
         ct.randomlyChooseOneStudent()
+    elif args.mark_absent:
+        markLastStudentAbsent()
     elif args.record_score is not None:
         recordGradeForLastStudent(args.record_score)
     elif args.assign_groups_by_size is not None:
