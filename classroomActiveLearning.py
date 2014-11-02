@@ -26,7 +26,8 @@ if not os.path.exists(GRADES_FILE):
         ff.write('dummyDate	dummyclassfile	dummystudentName	dummystudentID	dummygrade	dummygrade2	dummygrade3	dummygrade4	dummygrade5	dummygrade6\n')
 
 import time # Wow. "%c" format isn't even consistent between python and ipython on my own system!!
-now = time.strftime('%Y %b %d %a %j %H:%M:%S %Z')  # time.strftime("%c")
+DATETIMEFMT='%Y %b %d %a %j %H:%M:%S %Z'
+now = time.strftime(DATETIMEFMT)  # time.strftime("%c")
 AVOID_PREVIOUS_N_STUDENTS=3
 
 def chooseClassListFile():
@@ -95,6 +96,29 @@ def chunksOfSizeN(l,N):
     To instead yield nearly-equal sized chunks of size <=N, use nChunks(
     """
     return(nChunks(l,   N/l)) # floor(N/l) in python 3?
+def report_all_grades(classfile=None): # Return a dataframe with all in-class students' records
+    dfr=pd.read_table(GRADES_FILE, sep='\t')#, dialect=None, compression=None, doublequote=True, escapechar=None, quotechar='"', quoting=0, skipinitialspace=False, lineterminator=None, header='infer', index_col=None, names=None, prefix=None, skiprows=None, skipfooter=None, skip_footer=0, na_values=None, na_fvalues=None, true_values=None, false_values=None, delimiter=None, converters=None, dtype=None, usecols=None, engine='c', delim_whitespace=False, as_recarray=False, na_filter=True, compact_ints=False, use_unsigned=False, low_memory=True, buffer_lines=None, warn_bad_lines=True, error_bad_lines=True, keep_default_na=True, thousands=None, comment=None, decimal='.', parse_dates=False, keep_date_col=False, dayfirst=False, date_parser=None, memory_map=False, nrows=None, iterator=False, chunksize=None, verbose=False, encoding=None, squeeze=False, mangle_dupe_cols=True, tupleize_cols=False, infer_datetime_format=False)
+    df=dfr.dropna(subset=['grade'])
+    df=df[-(df.grade.isin(['dummygrade']))]
+    df=df[df.Date.str.endswith('EDT')] # This is a kludge because CPBL old code started with a different format
+    df.grade=df.grade.replace({'A':'0'}).map(int)
+    df.datet=pd.to_datetime(df.Date,format=DATETIMEFMT)
+    df['day']=df.datet.map(lambda x: x.strftime('%Y-%m-%d %b %d %a'))
+   
+    byStudent=df.groupby(['studentName','studentID','grade'])['grade'].count().unstack('grade').fillna(0)
+    byStudent['mean']=  df.groupby(['studentName','studentID',])[['grade']].mean()
+    byStudent['N']=  df.groupby(['studentName','studentID',])[['grade']].count()
+    print byStudent
+
+    for astudent,adf in df.groupby(['studentName','studentID']):
+        ff=adf.set_index(['studentName','studentID'])['grade']
+        print(ff.count())
+
+    for courseday, adf in df.groupby(['classfile','day']):
+        acourse,aday=courseday
+        if classfile is not None and classfile is not acourse: continue
+        print(str(aday)+'\t%f\t%d'%(adf.grade.mean(),adf.grade.count()))
+    return(no_output_yet_except_printed)
 
 
 ###########################################################################################
@@ -145,7 +169,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
     def writeEmailList(self):
         if 'classlist.csv' in self.classlistfile:
             with open(self.classlistfile.replace('classlist.csv','classemails.txt'),'wt') as ff:
-                ff.write('  '.join(self.classlist['Email'].values))
+                ff.write(' , '.join(self.classlist['Email'].values))
 
     def randomlyChooseOneStudent(self):
         """
@@ -248,6 +272,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         #"<span foreground='blue' font='32'>%s</span>" """%astudent)
         #os.system("""zenity --title "" --info --text " """+html+' " ') #<span foreground='blue' font='32'>%s</span>" """%astudent)
  
+
 if __name__ == '__main__':
     import argparse
 
@@ -270,6 +295,9 @@ if __name__ == '__main__':
     parser.add_argument('-a', '--mark-absent', 
                         action='store_true',
                        help=' Mark the most recently displayed individual as absent today')
+    parser.add_argument('--report-grades', 
+                        action='store_true',
+                       help=' Produce reports for each course / each student on in-class assessment so far.')
     #parser.add_argument('--sum', dest='accumulate', action='store_const',
     #                   const=sum, default=max,
     #                   help='sum the integers (default: find the max)')
@@ -287,6 +315,8 @@ if __name__ == '__main__':
         ct.randomlyAssignGroups(groupsize=args.assign_groups_by_size)
     elif args.assign_into_groups is not None:
         ct.randomlyAssignGroups(numbergroups=args.assign_into_groups)
+    elif args.report_grades:
+        report_all_grades() # Return a dataframe with all in-class students' records
     else: # Demo
 
         ct=cpblClassroomTools(classlistfile=classlistfile)
