@@ -1,0 +1,36 @@
+
+% The problem is that the MIT exam class has poor support for multiple-choice questions:  no randomization of question order, and no avoiding page-breaking in the middle of a question.
+% So here is an attempt at fixing the latter problem
+
+%\usepackage{comment} % To build UNUSED versions of environments
+% Why does following fail?
+%\newenvironment{UNUSEDmcquestion}[3]{\begin{comment}}{\end{comment}}
+
+\newenvironment{mcquestion}[3]{
+\begin{minipage}{\linewidth}
+\question[#1][#2] {\bf #3}
+\begin{choices}}{ \end{choices} 
+\end{minipage}
+\vspace{5mm}
+}
+
+
+
+% Following is broken. See Stackexchange?
+\newenvironment{multichoice}[3]{
+%\begin{minipage}{\linewidth}
+\question[#1][#2]#3
+\begin{choices}}{ \end{choices} %\end{minipage}
+}
+
+% 2014 Oct: I cannot get the following to behave on mcquestion (rather than checkboxes).
+\usepackage{etoolbox}
+\AtBeginEnvironment{multichoice}{%
+   \par\medskip\begin{minipage}{\linewidth}}
+\makeatletter
+\AtEndEnvironment{multichoice}{%
+   \if@correctchoice \endgroup \fi%
+   \end{minipage}}
+\makeatother
+%
+%
