@@ -14,6 +14,7 @@ What formats of student names does it recognize?
 To do:
 - set up keystroke to indicate someone is absent today?
 - avoid repeating someone who was just called in the last few?
+- set up a parameter for random student name so that the last N graded ones are excluded.
 
 """
 import pandas as pd
@@ -96,20 +97,43 @@ def chunksOfSizeN(l,N):
     To instead yield nearly-equal sized chunks of size <=N, use nChunks(
     """
     return(nChunks(l,   N/l)) # floor(N/l) in python 3?
-def report_all_grades(classfile=None): # Return a dataframe with all in-class students' records
+def report_all_grades(classfile=None,maxOneZeroPerDay=True,allowOneDayAway=True): # Return a dataframe with all in-class students' records
     dfr=pd.read_table(GRADES_FILE, sep='\t')#, dialect=None, compression=None, doublequote=True, escapechar=None, quotechar='"', quoting=0, skipinitialspace=False, lineterminator=None, header='infer', index_col=None, names=None, prefix=None, skiprows=None, skipfooter=None, skip_footer=0, na_values=None, na_fvalues=None, true_values=None, false_values=None, delimiter=None, converters=None, dtype=None, usecols=None, engine='c', delim_whitespace=False, as_recarray=False, na_filter=True, compact_ints=False, use_unsigned=False, low_memory=True, buffer_lines=None, warn_bad_lines=True, error_bad_lines=True, keep_default_na=True, thousands=None, comment=None, decimal='.', parse_dates=False, keep_date_col=False, dayfirst=False, date_parser=None, memory_map=False, nrows=None, iterator=False, chunksize=None, verbose=False, encoding=None, squeeze=False, mangle_dupe_cols=True, tupleize_cols=False, infer_datetime_format=False)
+    print len(dfr)
     df=dfr.dropna(subset=['grade'])
+    print len(df)
     df=df[-(df.grade.isin(['dummygrade']))]
-    df=df[df.Date.str.endswith('EDT')] # This is a kludge because CPBL old code started with a different format
+    print len(df)
+    df=df[df.Date.str.endswith('T')] # This is a kludge because CPBL old code started with a different format
+    print len(df)
     df.grade=df.grade.replace({'A':'0'}).map(int)
     df.datet=pd.to_datetime(df.Date,format=DATETIMEFMT)
     df['day']=df.datet.map(lambda x: x.strftime('%Y-%m-%d %b %d %a'))
-   
-    byStudent=df.groupby(['studentName','studentID','grade'])['grade'].count().unstack('grade').fillna(0)
-    byStudent['mean']=  df.groupby(['studentName','studentID',])[['grade']].mean()
-    byStudent['N']=  df.groupby(['studentName','studentID',])[['grade']].count()
-    print byStudent
+    df.studentName= df.studentName.map(lambda ss:ss.strip())
+    print df
+    dropstudents=['260416238','260553281','260350985']
+    df=df[-(df.studentID.isin(dropstudents))]
 
+    if maxOneZeroPerDay:
+        dfzeros=df.query('grade == 0').drop_duplicates(cols=['studentID','day','grade'])
+        dfnonzeros=df.query('grade > 0')
+        df=pd.concat([dfzeros,dfnonzeros])
+
+    byStudent=df.groupby(['studentName','studentID','grade'])['grade'].count().unstack('grade').fillna(0)
+    byStudent['mean']=  df.groupby(['studentName','studentID',])['grade'].mean()
+    byStudent['N']=  df.groupby(['studentName','studentID',])['grade'].count()
+    afterAllowance=[]
+    for astudent,adf in df.sort('Date').groupby(['studentName','studentID']):
+        print adf[['studentName','grade','Date','studentID']]
+    """    # You can only have one zero per day.
+        for theday,oneday in adf.groupby('Date'):
+            oneday.sort('grade',inplace=True)
+            while len(oneday[oneday.grade==0])>1:
+                oneday.drop[0]
+    """
+    print byStudent
+    print(' ')
+    print byStudent.sort('mean')
     for astudent,adf in df.groupby(['studentName','studentID']):
         ff=adf.set_index(['studentName','studentID'])['grade']
         print(ff.count())
@@ -118,7 +142,7 @@ def report_all_grades(classfile=None): # Return a dataframe with all in-class st
         acourse,aday=courseday
         if classfile is not None and classfile is not acourse: continue
         print(str(aday)+'\t%f\t%d'%(adf.grade.mean(),adf.grade.count()))
-    return(no_output_yet_except_printed)
+    return()#no_output_yet_except_printed)
 
 
 ###########################################################################################

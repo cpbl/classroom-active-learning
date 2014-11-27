@@ -6,14 +6,18 @@
 % Why does following fail?
 %\newenvironment{UNUSEDmcquestion}[3]{\begin{comment}}{\end{comment}}
 
+
 \newenvironment{mcquestion}[3]{
 \begin{minipage}{\linewidth}
-\question[#1][#2] {\bf #3}
+\question[#1]#2 {\bf #3}
 \begin{choices}}{ \end{choices} 
 \end{minipage}
 \vspace{5mm}
 }
-
+%\ifthenelse{\isempty{#2}}%
+%{}% if #1 is empty
+%{[#2]}%
+%}%
 
 
 % Following is broken. See Stackexchange?
