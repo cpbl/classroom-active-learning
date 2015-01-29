@@ -1,31 +1,33 @@
+#!/usr/bin/python
 """
+Pairwise unisex Speed Dating Schedule / Speed date scheduling
+
 Consider N people who want to meet in pairs, e.g. 5 minutes each.
 We will do R rounds. In general, 
 
-N must be even
+   N must be even, so no one has to sit out.
 
 and
 
-R<=N-1
+   R <= N-1
 
 since in N-1 rounds, everyone can meet everyone.
 
-If we want to have an easier time solving, this, we could choose a lower R and be satisfied with not everyone meeting everyone.  
+If N is not a power of 2 and we want  R>N/2, this is hard.
+If we want to have an easier time solving this (Is it NP-hard?! See 
+Ben Strasser's thesis, "SpeedDating: An Algorithmic Case Study involving Matching and Scheduling"), we could choose a lower R and be satisfied with not everyone meeting everyone.  But I haven't figured this out yet. Genetic algorithm? Small-R heuristic?
 
-
-
-If N is a power of 2, I see an easy algorithm for assigning the schedule:
+If N is a power of 2 (or if it's even and we only want R<=
+N/2), I see an easy algorithm for assigning the schedule:
   We schedule the first N/2 rounds very easily: split the group in two, line the groups up facing each other, and have one group step left (and wrap back to the other side) each round.
   For the remaining rounds, we carry out the same algorithm within each of the initial groups.
-
-If N is not a power of 2 and we want  R>N/2 
 
 """
 
 def schedule_speed_dates(N,R=None):
     """ 
-N can be an integer, or a list of names (we'll call it's length N)
-R can be less than or equal to N-1
+    N can be an integer, or a list of names (we'll call its length N)
+    R can be less than or equal to N-1
     """
     if isinstance(N,int): 
         Names=[str(nn) for nn in range(1,N+1)]
@@ -38,8 +40,12 @@ R can be less than or equal to N-1
         sol=schedule_speed_dates_power_of_two(Names)
         print('\n'.join(['%s: %s'%(an,str(sol[ii])) for ii,an in enumerate(Names)]))
         return(sol)
+    else:
+        print('Cannot currently give you more then %d rounds for this N.\n  Quitting.'%(N/2))
+
 def rotate(l,n):  # Postive N rotates to the right: abcd --> dabc
     return l[-n:] + l[:-n]
+
 def schedule_speed_dates_power_of_two(Names):
     """
     A result is list, for each participant, of their matches in order.
@@ -72,6 +78,7 @@ Frank
 Jill
 Kristin
 Daniel
+
     """.split('\n') if L.strip()])
 """
 """
