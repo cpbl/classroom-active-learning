@@ -2,6 +2,9 @@
 """
 Pairwise unisex Speed Dating Schedule / Speed date scheduling
 
+This seems to be a simple "round robin" scheduling problem, solved even on Wikipedia.
+The algorithm is similar for even and odd numbers; with odd, just add an extra "nobody" person.
+
 Consider N people who want to meet in pairs, e.g. 5 minutes each.
 We will do R rounds. In general, 
 
@@ -13,19 +16,14 @@ and
 
 since in N-1 rounds, everyone can meet everyone.
 
-If N is not a power of 2 and we want  R>N/2, this is hard.
-If we want to have an easier time solving this (Is it NP-hard?! See 
-Ben Strasser's thesis, "SpeedDating: An Algorithmic Case Study involving Matching and Scheduling"), we could choose a lower R and be satisfied with not everyone meeting everyone.  But I haven't figured this out yet. Genetic algorithm? Small-R heuristic?
-
-If N is a power of 2 (or if it's even and we only want R<=
-N/2), I see an easy algorithm for assigning the schedule:
-  We schedule the first N/2 rounds very easily: split the group in two, line the groups up facing each other, and have one group step left (and wrap back to the other side) each round.
-  For the remaining rounds, we carry out the same algorithm within each of the initial groups.
-
 """
+def rotate(l,n):  # Postive N rotates to the right: abcd --> dabc
+    return l[-n:] + l[:-n]
 
 def schedule_speed_dates(N,R=None):
-    """ 
+    """
+    Stand one person fixed at head of long, narrow table. Rotate everyone else around all the other positions. People play with the person facing them.
+
     N can be an integer, or a list of names (we'll call its length N)
     R can be less than or equal to N-1
     """
@@ -34,40 +32,30 @@ def schedule_speed_dates(N,R=None):
     else:
         Names=N
         N=len(Names)
-    if R is None: R=N-1
-    import math
-    if math.log(N,2) == int(math.log(N,2)):
-        sol=schedule_speed_dates_power_of_two(Names)
-        print('\n'.join(['%s: %s'%(an,str(sol[ii])) for ii,an in enumerate(Names)]))
-        return(sol)
-    else:
-        print('Cannot currently give you more then %d rounds for this N.\n  Quitting.'%(N/2))
 
-def rotate(l,n):  # Postive N rotates to the right: abcd --> dabc
-    return l[-n:] + l[:-n]
-
-def schedule_speed_dates_power_of_two(Names):
-    """
-    A result is list, for each participant, of their matches in order.
-    Split the group in half. Line them up facing each other. Each round, the top half rotates to the right.
-    Round 1:       Round 2: ....     Round 4.
-    1 2 3 4         4 1 2 3  ...
-    5 6 7 8         5 6 7 8  ...
-    """
-    N=len(Names)
-    def solve_half(names):
-        nn=len(names)
-        assert nn>1
-        return([  rotate(names[nn/2:],rot) for rot in range(nn/2) ] + [rotate(names[:nn/2],rot) for rot in range(nn/2) ]  )
+    if not  N%2==0:
+        Names+=['nobody (bye)']
+        N+=1
 
     import random
     random.shuffle(Names)
-    sol=solve_half(Names)
-    if N>2:
-        solA=schedule_speed_dates_power_of_two(Names[:N/2]) + schedule_speed_dates_power_of_two(Names[N/2:])
-        sol=[sum(a,[]) for a in zip(sol,solA)]
-        
-    return(sol)
+
+    if R is None: R=N-1
+
+    # Initialize a dict containing each player's schedule
+    schedule=dict([[nn,[]] for nn in Names])
+
+    restOfTable=Names[1:]
+    tableLength=N/2 -1
+    for rn in range(R):
+        lon=rotate(restOfTable,rn)
+        lineups= zip (   Names[:1] + lon[:tableLength]    , [lon[tableLength]] + lon[tableLength:][::-1]  )
+        for apair in lineups:
+            schedule[apair[0]]+=[apair[1]]
+            schedule[apair[1]]+=[apair[0]]
+    for nn,mm in schedule.items(): # This order is not well determined. It comes from dict. Sort?
+        print(nn+':  '+str(mm))
+    return(schedule)
                              
 if __name__ == "__main__":
     schedule_speed_dates([L for L in """Antonia
@@ -80,5 +68,3 @@ Kristin
 Daniel
 
     """.split('\n') if L.strip()])
-"""
-"""
