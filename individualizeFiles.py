@@ -32,9 +32,10 @@ pdftk input_file.pdf stamp wmark_text_tiled.pdf output output_file.pdf
 
 def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False):
     createBlankPDFpage()
-    # Create a password file:
+    # Create a password file, and delete the httpd.conf additions:
     os.system("""
     htpasswd -bc /home/meuser/htpasswd/.htpasswd dummyuser dummypassword 
+    rm """+SP+""" addmeto-httpd.conf
     """)
     PDFfileName=os.path.splitext(os.path.split(PDFfile)[1])[0]
     from classroomActiveLearning import cpblClassroomTools
@@ -51,8 +52,9 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
         mkdir -p """+WWW+sID )
         blend_PDFwatermarkPage_to_multipagePDF(PDFfile,WWW+sID+'/'+PDFfileName+'%s.pdf'%sID,watermarkFile     )
         # Also append this student to a password file: 
+        print(' Creating individualized access for '+adf['Student Name']+' '+sID+' '+adf['Email'])
         os.system("""
-        htpasswd -b /home/meuser/htpasswd/.htpasswd """+sID +' '+adf['Email']+"""
+        htpasswd -b /home/meuser/htpasswd/.htpasswd """+sID +' '+adf['Email'].split('@')[0]+"""
         """)
         # And tell the web server to protect this directory, allowing only the student. This addmeto-httpd.conf file will need to be appended to the server configuration (e.g. httpd.conf)
         # N.B.: If you need to use .htaccess files, instead, just create one in each folder, here.
@@ -77,3 +79,8 @@ create_individualized_files('tmp.pdf',forceUpdate=True)
 
 if __name__ == '__main__':
     create_individualized_files('tmp.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False)
+  #Notes: 2015: .htpasswd file is /etc/cpbl-htpasswd   I am using httpd.conf entries rather than .htaccess.
+
+  # A nicer way to do all of this might be with .htaccess files without username:
+#  http://stackoverflow.com/questions/12112917/htacess-protection-folder-without-username
+ # Or else do the authentication using PHP rather than apache's.??   Is this useful: http://php.net/manual/en/features.http-auth.php 
