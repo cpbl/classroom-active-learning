@@ -7,14 +7,16 @@ Randomly choose a student from the class list, and pop-up their name using opera
 
 On the size-N algorithm: I want each group to be at least size N, and hopefully not much larger. So no orphan/small groups. Now implemented, along with N groups of roughly equal size.
 
-What formats of student names does it recognize?
+What formats of student names does it recognize?  (This the format given by McGill's MyCourses2 system, when you download a CSV classlist)
  - columns named firstName and lastName
  - one column called "Student Name" with content formatted "last name, first name"
 
 To do:
-- set up keystroke to indicate someone is absent today?
-- avoid repeating someone who was just called in the last few?
+- set up keystroke to indicate someone is absent today? [DONE]
+- avoid repeating someone who was just called in the last few? [DONE]
 - set up a parameter for random student name so that the last N graded ones are excluded.
+
+N.B. I have hardcoded aspects of my teaching schedule and course numbers into chooseClassListFile. Edit this in the obvious way.
 
 """
 import pandas as pd

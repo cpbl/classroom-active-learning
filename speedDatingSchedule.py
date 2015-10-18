@@ -58,13 +58,17 @@ def schedule_speed_dates(N,R=None):
     return(schedule)
                              
 if __name__ == "__main__":
-    schedule_speed_dates([L for L in """Antonia
-Ari
+    schedule_speed_dates([L for L in """Ari
 Chris
 David
 Frank
 Jill
 Kristin
 Daniel
+Heather
 
     """.split('\n') if L.strip()])
+"""
+Tasha
+Antonia
+"""
