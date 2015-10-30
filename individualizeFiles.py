@@ -28,7 +28,7 @@ WWW=SP+'indivdist/'
 HTPASSWD=SP+'.htpasswd'  # Actual server location  of the htpasswd
 
 def createBlankPDFpage(): # This defaults to letter sized
-    os.system("echo "" | ps2pdf -sPAPERSIZE=usletter - "+BLANKPAGE)
+    os.system("echo "" | ps2pdf -sPAPERSIZE=letter - "+BLANKPAGE)
 
 
 #### no use:     convert -background none -geometry +0+0 -fill \#000000 -pointsize 12 label:"From the library of..." -set label '' -page letter watermark.pdf
@@ -42,21 +42,30 @@ def createSingleWatermarkedPage(wtext,outfile='tmp_watermark_out.pdf',blankpage=
     """).replace('pageblanche.pdf',blankpage).replace('wmark_text_tiled.pdf',outfile)
     #convert -size 200x80 xc:none -fill '"""+color+""""' -stroke  '"""+color+""""'    -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
     ###  convert -size 200x80 xc:none -fill "#dddddd"     -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
-    os.system( syscmd)
     print(syscmd)
+    os.system( syscmd)
   
-def blend_PDFwatermarkPage_to_multipagePDF(infile='input_file.pdf',outfile='output_file.pdf',watermarkfile='wmark_text_tiled.pdf'):
+def blend_PDFwatermarkPage_to_multipagePDF(infile='input_file.pdf',outfile='output_file.pdf',tmpfile=None,watermarkfile='wmark_text_tiled.pdf',rasterize=True):
+    if tmpfile is None:
+        tmpfile=SP+'tmpPreRaster-'+os.path.split(outfile)[1]
     os.system("""
 pdftk input_file.pdf background wmark_text_tiled.pdf output output_file.pdf
-""".replace('input_file.pdf',infile).replace('output_file.pdf',outfile).replace('wmark_text_tiled.pdf',watermarkfile))
+""".replace('input_file.pdf',infile).replace('output_file.pdf',tmpfile if rasterize else outfile).replace('wmark_text_tiled.pdf',watermarkfile)+"""
+"""+rasterize* """
+tmpfile2=$(mktemp).pdf
+echo "   Rasterizing; ...  then optimizing to shrink pdf file..."
+convert -render -density 300 """+tmpfile+""" $tmpfile2  
+gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile="""+outfile+""" $tmpfile2
+""")
+    print(" Output to "+outfile)
 
 
-def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False):
+def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv',  rasterize=True, forceUpdate=False):
     createBlankPDFpage()
     # Create a password file, and delete the httpd.conf additions:
     os.system("""
     htpasswd -bc /home/meuser/htpasswd/.htpasswd dummyuser dummypassword 
-    rm """+SP+""" addmeto-httpd.conf
+    rm """+SP+"""addmeto-httpd.conf
     """)
     PDFfileName=os.path.splitext(os.path.split(PDFfile)[1])[0]
     from classroomActiveLearning import cpblClassroomTools
@@ -71,7 +80,7 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
         print(' Creating individualized document for '+adf['Student Name'])
         os.system("""
         mkdir -p """+WWW+sID )
-        blend_PDFwatermarkPage_to_multipagePDF(PDFfile,WWW+sID+'/'+PDFfileName+'%s.pdf'%sID,watermarkFile     )
+        blend_PDFwatermarkPage_to_multipagePDF(PDFfile,WWW+sID+'/'+PDFfileName+'%s.pdf'%sID,None, watermarkFile  ,rasterize=rasterize   )
         # Also append this student to a password file: 
         print(' Creating individualized access for '+adf['Student Name']+' '+sID+' '+adf['Email'])
         os.system("""
