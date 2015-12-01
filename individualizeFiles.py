@@ -1,5 +1,6 @@
 #!/usr/bin/python
 import os
+from classroomActiveLearning import cpblClassroomTools
 """
 This spells out how to put each student's name as a watermark on an individualized version of a given PDF which you want to distribute in a way which discourages sharing of documents.
 It also provides one or two ways to distribute them, either by automated individual emails or by directing people to individualized (hidden) folders accessed by http, optionally with authentication based on their student ID and name.
@@ -38,7 +39,7 @@ def createBlankPDFpage(): # This defaults to letter sized
 def createSingleWatermarkedPage(wtext,outfile='tmp_watermark_out.pdf',blankpage=BLANKPAGE,color='#dddddd'):
     wtext=''.join([cc for cc in wtext if cc not in """'"'"""])
     syscmd=("""
-    convert -size 500x120 xc:none -stroke "#eeeeee" -fill "#eeeeee" -pointsize 24    -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
+    convert -size 500x120 xc:none -stroke "%s" -fill "%s" -pointsize 24    -gravity NorthWest -draw "text 10,10 '"""%(color,color)+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
     """).replace('pageblanche.pdf',blankpage).replace('wmark_text_tiled.pdf',outfile)
     #convert -size 200x80 xc:none -fill '"""+color+""""' -stroke  '"""+color+""""'    -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
     ###  convert -size 200x80 xc:none -fill "#dddddd"     -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
@@ -60,13 +61,16 @@ gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutput
     print(" Output to "+outfile)
 
 
-def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv',  rasterize=True, forceUpdate=False):
+def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv', showIDandName=True, rasterize=True, gray=None, forceUpdate=False, ):
     createBlankPDFpage()
     # Create a password file, and delete the httpd.conf additions:
     os.system("""
     htpasswd -bc /home/meuser/htpasswd/.htpasswd dummyuser dummypassword 
     rm """+SP+"""addmeto-httpd.conf
     """)
+    if gray is None:
+        gray='#ffffff'
+        gray='#dddddd'
     PDFfileName=os.path.splitext(os.path.split(PDFfile)[1])[0]
     from classroomActiveLearning import cpblClassroomTools
     clt=cpblClassroomTools()
@@ -76,11 +80,21 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
         watermarkFile=SP+'tmp_watermark_out_%s.pdf'%sID
         if not os.path.exists(watermarkFile) or forceUpdate:
             print(' Creating watermark for '+adf['Student Name'])
-            createSingleWatermarkedPage('Exclusively for '+adf['Student Name'],outfile=watermarkFile,color='#ffffff')
+            createSingleWatermarkedPage('Exclusively for '+adf['Student Name']+(showIDandName)*('  '+sID),outfile=watermarkFile,color=gray)
         print(' Creating individualized document for '+adf['Student Name'])
         os.system("""
         mkdir -p """+WWW+sID )
-        blend_PDFwatermarkPage_to_multipagePDF(PDFfile,WWW+sID+'/'+PDFfileName+'%s.pdf'%sID,None, watermarkFile  ,rasterize=rasterize   )
+        blend_PDFwatermarkPage_to_multipagePDF(PDFfile,SP+PDFfileName+'%s.pdf'%sID,None, watermarkFile  ,rasterize=rasterize   )
+        # Now we also have to update the PDF metadata, so the title is something more sensible than what Imagemagick (?) made.
+        with open(SP+'tmp_fileinfo_%s.info'%sID,'wt') as fout:
+            fout.write("""
+InfoKey: Title
+InfoValue: Exclusively for """+adf['Student Name'].strip()+""". No distribution permitted.
+""")
+        os.system("""
+pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.info'%sID+""" output """+WWW+sID+'/'+PDFfileName+'%s.pdf'%sID+"""
+""")
+        
         # Also append this student to a password file: 
         print(' Creating individualized access for '+adf['Student Name']+' '+sID+' '+adf['Email'])
         os.system("""
@@ -103,17 +117,25 @@ def createHiddenFoldersForEachStudent(): # Not finished
  (e.g. just once per term) email them the URL of a private http folder. Rather than use authentication, this could simply be a long random string. Maybe a hash of their sid?
 """
     
-def emailEachStudent(): #Not finished
+def emailEachStudent(originalFileStem,subject=None,body=None,classlistfile='/home/meuser/courses/201/classlist-test.csv'):
+#    emailEachStudent('tmp.pdf',
     """ We could email each student the file directly as an attachment, or we could (e.g. just once per term) email them the URL of a private http folder. Rather than use authentication, this could simply be a long random string. Maybe a hash of their sid?
 """
     clt=cpblClassroomTools()
     df=clt.loadClassList(classlistfile)
+    emailbodyfile=SP+'emailmessage'+originalFileStem+'.txt'
+    with open(emailbodyfile,'wt') as fout:
+        fout.write('\n'+body+'\n')
     for ii,adf in df.iterrows():
         sID=str(adf['ID'])
         email=adf['Email']
+        fileToSend=WWW+sID+'/'+originalFileStem+sID+'.pdf'
         muttcmd="""
-mutt -s "Test from mutt" user@yahoo.com -a /tmp/file.jpg      < /tmp/message.txt 
+"""+'mutt -s "'+subject.replace('"','')+'" '+email+' -a '+fileToSend +'  < '+emailbodyfile+"""
 """
+        print(muttcmd),
+        os.system(muttcmd)
+        print('   ... sent!')
     
 def createOrAddToWebsite():
     # This issn't done. Why not just email them instead? Use seendemail (rather than  sendmail) or mutt for easy command-line emailing using an external SMTP service, without changing your MTA (ie for me, without uninstalling postfix, which is what ssmtp requires)
@@ -128,8 +150,14 @@ create_individualized_files('tmp.pdf',forceUpdate=True)
 """
 
 if __name__ == '__main__':
-    create_individualized_files('tmp.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False)
-  #Notes: 2015: .htpasswd file is /etc/meuser-htpasswd   I am using httpd.conf entries rather than .htaccess.
+
+    """ 
+Name your source PDF file with a name ending in "-.pdf".  This way, the hyphen will separate the rest of the name from the students' identities.
+    """
+    create_individualized_files('MT1-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist-test.csv',  forceUpdate=True)
+    emailEachStudent('MT1-MC-',subject="[ENVR 201] Solutions for MT1",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
+
+    #Notes: 2015: .htpasswd file is /etc/meuser-htpasswd   I am using httpd.conf entries rather than .htaccess.
 
   # A nicer way to do all of this might be with .htaccess files without username:
 #  http://stackoverflow.com/questions/12112917/htacess-protection-folder-without-username

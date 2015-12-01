@@ -56,9 +56,39 @@ def schedule_speed_dates(N,R=None):
     for nn,mm in schedule.items(): # This order is not well determined. It comes from dict. Sort?
         print(nn+':  '+str(mm))
     return(schedule)
-                             
+
+def display_speed_dates(schedule):
+    import tempfile
+    import os
+    fileTemp = tempfile.NamedTemporaryFile(delete = False)
+    kk=[kkk for kkk in schedule.keys() if 'nobody' not in kkk]
+    fileTemp.write(""" <HTML>
+<TABLE border=1><TR><TD>Round</TD> """+' '.join(['<td><b>'+aplayer+'</b></td>' for aplayer in kk])+""" </TR>
+"""+'\n'.join(['<TR '+(iround%2)*'BGCOLOR="#CCCC99"'+'><TD><b>%d</b>'%(1+iround)+'</TD> '+' '.join(['<td>'+schedule[aplayer][iround]+'</td>' for aplayer in kk])
+               for iround in range(len(schedule[kk[0]]))])+"""
+""")
+    fileTemp.close()
+    os.system('google-chrome '+fileTemp.name)
+
+
 if __name__ == "__main__":
-    schedule_speed_dates([L for L in """Ari
+    datesched=schedule_speed_dates([L for L in """
+Jennifer Yoon
+Ava Liu
+Katie Tully
+Daria Khadir
+Tianyu Zhang
+Arianna Fisher
+""".split('\n') if L.strip()])
+
+    display_speed_dates(datesched)    
+    """
+Tasha
+Antonia
+
+Karen Lam
+
+Ari
 Chris
 David
 Frank
@@ -67,8 +97,5 @@ Kristin
 Daniel
 Heather
 
-    """.split('\n') if L.strip()])
 """
-Tasha
-Antonia
-"""
+
