@@ -57,11 +57,13 @@ tmpfile2=$(mktemp).pdf
 echo "   Rasterizing; ...  then optimizing to shrink pdf file..."
 convert -render -density 300 """+tmpfile+""" $tmpfile2  
 gs -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -dNOPAUSE -dQUIET -dBATCH -sOutputFile="""+outfile+""" $tmpfile2
+rm $tmpfile2
 """)
     print(" Output to "+outfile)
 
 
-def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv', showIDandName=True, rasterize=True, gray=None, forceUpdate=False, ):
+def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/classlist.csv', showIDandName=True, rasterize=True, gray=None, forceUpdate=False, domax=99999):
+    print('\n--------------------')
     createBlankPDFpage()
     # Create a password file, and delete the httpd.conf additions:
     os.system("""
@@ -76,22 +78,28 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
     clt=cpblClassroomTools()
     df=clt.loadClassList(classlistfile)
     for ii,adf in df.iterrows():
+        assert ii<domax
         sID=str(adf['ID'])
         watermarkFile=SP+'tmp_watermark_out_%s.pdf'%sID
         if not os.path.exists(watermarkFile) or forceUpdate:
+            forceUpdate=True
             print(' Creating watermark for '+adf['Student Name'])
             createSingleWatermarkedPage('Exclusively for '+adf['Student Name']+(showIDandName)*('  '+sID),outfile=watermarkFile,color=gray)
         print(' Creating individualized document for '+adf['Student Name'])
         os.system("""
         mkdir -p """+WWW+sID )
-        blend_PDFwatermarkPage_to_multipagePDF(PDFfile,SP+PDFfileName+'%s.pdf'%sID,None, watermarkFile  ,rasterize=rasterize   )
+        if not os.path.exists(SP+PDFfileName+'%s.pdf'%sID) or forceUpdate:
+            forceUpdate=True
+            blend_PDFwatermarkPage_to_multipagePDF(PDFfile,SP+PDFfileName+'%s.pdf'%sID,None, watermarkFile  ,rasterize=rasterize   )
         # Now we also have to update the PDF metadata, so the title is something more sensible than what Imagemagick (?) made.
         with open(SP+'tmp_fileinfo_%s.info'%sID,'wt') as fout:
             fout.write("""
 InfoKey: Title
 InfoValue: Exclusively for """+adf['Student Name'].strip()+""". No distribution permitted.
 """)
-        os.system("""
+        if not os.path.exists(WWW+sID+'/'+PDFfileName+'%s.pdf'%sID) or forceUpdate:
+            forceUpdate=True
+            os.system("""
 pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.info'%sID+""" output """+WWW+sID+'/'+PDFfileName+'%s.pdf'%sID+"""
 """)
         
@@ -100,7 +108,7 @@ pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.in
         os.system("""
         htpasswd -b /home/meuser/htpasswd/.htpasswd """+sID +' '+adf['Email'].split('@')[0]+"""
         """)
-        # And tell the web server to protect this directory, allowing only the student. This addmeto-httpd.conf file will need to be appended to the server configuration (e.g. httpd.conf)
+        # And tell the web server (if we want to distribute things this way) to protect this directory, allowing only the student. This addmeto-httpd.conf file will need to be appended to the server configuration (e.g. httpd.conf)
         # N.B.: If you need to use .htaccess files, instead, just create one in each folder, here.
         with open(SP+'addmeto-httpd.conf','a') as fout:
             fout.write( """
@@ -154,8 +162,8 @@ if __name__ == '__main__':
     """ 
 Name your source PDF file with a name ending in "-.pdf".  This way, the hyphen will separate the rest of the name from the students' identities.
     """
-    create_individualized_files('MT1-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist-test.csv',  forceUpdate=True)
-    emailEachStudent('MT1-MC-',subject="[ENVR 201] Solutions for MT1",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
+    create_individualized_files('MT2-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False, )
+    emailEachStudent('MT2-MC-',subject="[ENVR 201] Solutions for MT2 multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
 
     #Notes: 2015: .htpasswd file is /etc/meuser-htpasswd   I am using httpd.conf entries rather than .htaccess.
 
