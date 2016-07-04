@@ -1,4 +1,4 @@
-classroom-active-learning
+Classroom Active Learning utilities
 =========================
 
 Tools for implementing "active learning techniques" in (university) classrooms, 
