@@ -22,7 +22,7 @@ N.B. I have hardcoded aspects of my teaching schedule and course numbers into ch
 import pandas as pd
 import os
 
-GRADES_FILE='/home/cpbl/courses/activeLearningGrades.tsv'
+GRADES_FILE='/home/meuser/courses/activeLearningGrades.tsv'
 if not os.path.exists(GRADES_FILE):
     with open(GRADES_FILE,'at') as ff:
         ff.write('Date	classfile	studentName	studentID	grade	grade2	grade3	grade4	grade5	grade6\n')
@@ -33,14 +33,22 @@ DATETIMEFMT='%Y %b %d %a %j %H:%M:%S %Z'
 now = time.strftime(DATETIMEFMT)  # time.strftime("%c")
 AVOID_PREVIOUS_N_STUDENTS=3
 
-def chooseClassListFile():
+def chooseClassListFile(coursenumber=None):
     """
     Some custom specification of the class list default, if not given on command line
+    Or, suggest a file if 
     """
-    if "Tue" in now or "Thu" in now:
-        classlistfile='/home/cpbl/courses/201/classlist.csv'
+    if isinstance(coursenumber, basestring) and os.path.exists(coursenumber):
+        classlistfile=coursenumber
+    elif coursenumber is not None:
+        classlistfile = '/home/meuser/courses/'+str(coursenumber)+'/classlist.csv'
+        assert os.path.exists(classlistfile)
+    elif "Tue" in now or "Thu" in now:
+        classlistfile='/home/meuser/courses/201/classlist.csv'
+        assert os.path.exists(classlistfile)
     else:
-        classlistfile='/home/cpbl/courses/swb/classlist.csv'
+        classlistfile='/home/meuser/courses/swb/classlist.csv'
+        assert os.path.exists(classlistfile)
     return(classlistfile)
 
 def recordGradeForLastStudent(thegrade):
@@ -157,8 +165,8 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
     # Caution: If you define variables here, before __init__, you can access them with cpblClassroomTools.avar , but those are common to the entire class, not to an instance.
     def __init__(self,classlistfile=None):
 
-        if classlistfile is None:
-            classlistfile=chooseClassListFile()
+        if classlistfile is None or not os.path.exists(classlistfile):
+            classlistfile=chooseClassListFile(classlistfile)
         self.classlistfile=classlistfile
         """
         Shuffling the classlist initially to make remaining routines simpler
@@ -182,7 +190,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         # Clean up file a little before parsing
         import codecs
         LL=[LL.strip('\n') for LL in codecs.open(clfile,'rt',encoding='iso-8859-1').readlines() if LL.strip('\n')]
-        tmpfn='/home/cpbl/tmp/tmpClasslistfile'
+        tmpfn='/home/meuser/tmp/tmpClasslistfile'
         startrow=[ii for ii in range(len(LL)) if 'Student Name' in LL[ii] or 'Email' in LL[ii]][0]
         with codecs.open(tmpfn,'wt',encoding='iso-8859-1') as ff:
             ff.write('\n'.join(LL[startrow:])+'\n')
@@ -287,7 +295,7 @@ class cpblClassroomTools():  #  # # # # #    MAJOR CLASS    # # # # #  #
         print(html)
         tex+=closing
         import codecs
-        DDR='/home/cpbl/tmp/'
+        DDR='/home/meuser/tmp/'
         with codecs.open(DDR+'tmpGroups.tex','wt',encoding='utf8') as ff:
             ff.write(tex)
         os.system('cd '+DDR +' && pdflatex tmpGroups.tex')

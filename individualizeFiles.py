@@ -8,7 +8,7 @@ Options:
   --scratchpath=<SP>   Path for temporary files
   -f --force-update    Overwrite/recalculate database tables and outputs
   -s --serial       Turn off parallel computation; useful for debugging 
-
+  --classlistfile=<classlistfile>   Specify a csv file in McGill's format listing class enrollment, or the number of a hardcoded course
 
 Name your source PDF file with a name ending in "-.pdf".  This way, the hyphen will separate the rest of the name from the students' identities.
 
@@ -60,7 +60,7 @@ def createSingleWatermarkedPage(wtext,outfile='tmp_watermark_out.pdf',blankpage=
     #convert -size 200x80 xc:none -fill '"""+color+""""' -stroke  '"""+color+""""'    -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
     ###  convert -size 200x80 xc:none -fill "#dddddd"     -gravity NorthWest -draw "text 10,10 '"""+wtext+"""'"      -gravity SouthEast -draw "text 5,15 '"""+wtext+"""'"    miff:- |     composite -tile - pageblanche.pdf  wmark_text_tiled.pdf
     print(syscmd)
-    os.system( syscmd)
+    os.system( syscmd.encode('utf8'))
   
 def blend_PDFwatermarkPage_to_multipagePDF(infile='input_file.pdf',outfile='output_file.pdf',tmpfile=None,watermarkfile='wmark_text_tiled.pdf',rasterize=True):
     if tmpfile is None:
@@ -84,15 +84,14 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
     # Create a password file, and delete the httpd.conf additions:
     os.system("""
     htpasswd -bc /home/meuser/htpasswd/.htpasswd dummyuser dummypassword 
-    rm """+SP+"""addmeto-httpd.conf
+    touch """+SP+"""addmeto-httpd.conf  &&  rm """+SP+"""addmeto-httpd.conf
     """)
     if gray is None:
         gray='#ffffff'
         gray='#dddddd'
     PDFfileName=os.path.splitext(os.path.split(PDFfile)[1])[0]
-    from classroomActiveLearning import cpblClassroomTools
-    clt=cpblClassroomTools()
-    df=clt.loadClassList(classlistfile)
+    df=CLT.loadClassList(classlistfile)
+    funcs,    names,    argsl=[],[],[]
     for ii,adf in df.iterrows():
         assert ii<domax
         sID=str(adf['ID'])
@@ -111,7 +110,7 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
         with open(SP+'tmp_fileinfo_%s.info'%sID,'wt') as fout:
             fout.write("""
 InfoKey: Title
-InfoValue: Exclusively for """+adf['Student Name'].strip()+""". No distribution permitted.
+InfoValue: Exclusively for """+adf['Student Name'].strip().encode('utf8')+""". No distribution permitted.
 """)
         if not os.path.exists(WWW+sID+'/'+PDFfileName+'%s.pdf'%sID) or forceUpdate:
             forceUpdate=True
@@ -146,8 +145,7 @@ def emailEachStudent(originalFileStem,subject=None,body=None,classlistfile='/hom
 #    emailEachStudent('tmp.pdf',
     """ We could email each student the file directly as an attachment, or we could (e.g. just once per term) email them the URL of a private http folder. Rather than use authentication, this could simply be a long random string. Maybe a hash of their sid?
 """
-    clt=cpblClassroomTools()
-    df=clt.loadClassList(classlistfile)
+    df=CLT.loadClassList(classlistfile)
     emailbodyfile=SP+'emailmessage'+originalFileStem+'.txt'
     with open(emailbodyfile,'wt') as fout:
         fout.write('\n'+body+'\n')
@@ -180,6 +178,9 @@ if __name__ == '__main__':
         arguments = docopt.docopt(__doc__)
         basepdf = arguments['<basepdf>']
         forceUpdate =  arguments['--force-update'] == True
+        classlistfile= arguments['--classlistfile']
+
+        CLT=cpblClassroomTools(classlistfile)
         print arguments
     # Handle invalid options
     except docopt.DocoptExit as e:
