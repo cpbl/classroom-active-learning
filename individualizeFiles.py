@@ -12,11 +12,23 @@ Options:
 
 Name your source PDF file with a name ending in "-.pdf".  This way, the hyphen will separate the rest of the name from the students' identities.
 
+
+To do: parallelize steps in stages.
 """
 import docopt
 
 import os
 from classroomActiveLearning import cpblClassroomTools
+try:
+    from cpblUtilities.parallel import runFunctionsInParallel
+except ImportError:
+    def runFunctionsInParallel(funclist,names=None,parallel=None):
+        for ff in funclist:
+            if len(ff)==2:
+                ff+=[{}]
+            ff[0](ff[1],ff[2])
+    fppstopher
+
 """
 This spells out how to put each student's name as a watermark on an individualized version of a given PDF which you want to distribute in a way which discourages sharing of documents.
 It also provides one or two ways to distribute them, either by automated individual emails or by directing people to individualized (hidden) folders accessed by http, optionally with authentication based on their student ID and name.
@@ -91,7 +103,7 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
         gray='#dddddd'
     PDFfileName=os.path.splitext(os.path.split(PDFfile)[1])[0]
     df=CLT.loadClassList(classlistfile)
-    funcs,    names,    argsl=[],[],[]
+    funcs,    names=[],[]
     for ii,adf in df.iterrows():
         assert ii<domax
         sID=str(adf['ID'])
@@ -99,24 +111,42 @@ def create_individualized_files(PDFfile,classlistfile='/home/meuser/courses/201/
         if not os.path.exists(watermarkFile) or forceUpdate:
             forceUpdate=True
             print(' Creating watermark for '+adf['Student Name'])
-            createSingleWatermarkedPage('Exclusively for '+adf['Student Name']+(showIDandName)*('  '+sID),outfile=watermarkFile,color=gray)
+            funcs+=[[createSingleWatermarkedPage,['Exclusively for '+adf['Student Name']+(showIDandName)*('  '+sID)],dict(outfile=watermarkFile,color=gray)]]
+            names+=['blank watermark'+adf['Student Name']]
+            #createSingleWatermarkedPage('Exclusively for '+adf['Student Name']+(showIDandName)*('  '+sID),outfile=watermarkFile,color=gray)
+    runFunctionsInParallel(funcs,names=names,parallel=PARALLEL)
+    funcs,    names=[],[]    
+    for ii,adf in df.iterrows():
+        assert ii<domax
+        sID=str(adf['ID'])
+        watermarkFile=SP+'tmp_watermark_out_%s.pdf'%sID
+
         print(' Creating individualized document for '+adf['Student Name'])
         os.system("""
         mkdir -p """+WWW+sID )
         if not os.path.exists(SP+PDFfileName+'%s.pdf'%sID) or forceUpdate:
             forceUpdate=True
-            blend_PDFwatermarkPage_to_multipagePDF(PDFfile,SP+PDFfileName+'%s.pdf'%sID,None, watermarkFile  ,rasterize=rasterize   )
+            funcs+= [[blend_PDFwatermarkPage_to_multipagePDF,[PDFfile,SP+PDFfileName+'%s.pdf'%sID,None, watermarkFile], dict(rasterize=rasterize )]]
+            #blend_PDFwatermarkPage_to_multipagePDF(PDFfile,SP+PDFfileName+'%s.pdf'%sID,None, watermarkFile ],dict(rasterize=rasterize) ]]
+            names+= [sID+'rasterize']
         # Now we also have to update the PDF metadata, so the title is something more sensible than what Imagemagick (?) made.
         with open(SP+'tmp_fileinfo_%s.info'%sID,'wt') as fout:
             fout.write("""
 InfoKey: Title
 InfoValue: Exclusively for """+adf['Student Name'].strip().encode('utf8')+""". No distribution permitted.
 """)
+    runFunctionsInParallel(funcs,names=names,parallel=PARALLEL)
+    # The rest is fast enough to do in serial:
+    for ii,adf in df.iterrows():
+        assert ii<domax
+        sID=str(adf['ID'])
+        watermarkFile=SP+'tmp_watermark_out_%s.pdf'%sID
+
         if not os.path.exists(WWW+sID+'/'+PDFfileName+'%s.pdf'%sID) or forceUpdate:
             forceUpdate=True
             # The following also disallows copying and printing:
             os.system("""
-pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.info'%sID+""" output """+WWW+sID+'/'+PDFfileName+'%s.pdf'%sID+""" owner_pw "ifyoucantgetaroundthisyouareamilennial" 
+pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.info'%sID+""" output """+WWW+sID+'/'+PDFfileName+'%s.pdf'%sID+""" owner_pw "trivialtogetaroundthis" 
 """)
         
         # Also append this student to a password file: 
@@ -179,22 +209,25 @@ if __name__ == '__main__':
         basepdf = arguments['<basepdf>']
         forceUpdate =  arguments['--force-update'] == True
         classlistfile= arguments['--classlistfile']
-
+        PARALLEL=not arguments['--serial']
         CLT=cpblClassroomTools(classlistfile)
         print arguments
     # Handle invalid options
     except docopt.DocoptExit as e:
         print e.message
         stopthen
-        
+    assert basepdf.endswith('.pdf')
+    
     create_individualized_files(basepdf,classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=forceUpdate)
-    #'MT2-MC-.pdf'
-    stophere
-    """ 
-    """
-    create_individualized_files('MT2-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False, )
-    emailEachStudent('MT2-MC-',subject="[ENVR 201] Solutions for MT2 multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
+    emailEachStudent(os.path.split(basepdf)[1][:-4],subject="[ENVR 201] Solutions for MT multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
 
+
+    stophere
+    """
+    #'MT2-MC-.pdf'
+    create_individualized_files('MT2-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False, )
+    emailEachStudent(basepdf[:-4],subject="[ENVR 201] Solutions for MT multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
+    """
     #Notes: 2015: .htpasswd file is /etc/meuser-htpasswd   I am using httpd.conf entries rather than .htaccess.
 
   # A nicer way to do all of this might be with .htaccess files without username:
