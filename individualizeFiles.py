@@ -1,4 +1,20 @@
 #!/usr/bin/python
+"""
+Usage:
+ individualizeFiles.py <basepdf>  [options]
+
+Options:
+  -h --help      Show this screen.
+  --scratchpath=<SP>   Path for temporary files
+  -f --force-update    Overwrite/recalculate database tables and outputs
+  -s --serial       Turn off parallel computation; useful for debugging 
+
+
+Name your source PDF file with a name ending in "-.pdf".  This way, the hyphen will separate the rest of the name from the students' identities.
+
+"""
+import docopt
+
 import os
 from classroomActiveLearning import cpblClassroomTools
 """
@@ -99,8 +115,9 @@ InfoValue: Exclusively for """+adf['Student Name'].strip()+""". No distribution 
 """)
         if not os.path.exists(WWW+sID+'/'+PDFfileName+'%s.pdf'%sID) or forceUpdate:
             forceUpdate=True
+            # The following also disallows copying and printing:
             os.system("""
-pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.info'%sID+""" output """+WWW+sID+'/'+PDFfileName+'%s.pdf'%sID+"""
+pdftk """+SP+PDFfileName+'%s.pdf'%sID+""" update_info """+SP+'tmp_fileinfo_%s.info'%sID+""" output """+WWW+sID+'/'+PDFfileName+'%s.pdf'%sID+""" owner_pw "ifyoucantgetaroundthisyouareamilennial" 
 """)
         
         # Also append this student to a password file: 
@@ -158,9 +175,21 @@ create_individualized_files('tmp.pdf',forceUpdate=True)
 """
 
 if __name__ == '__main__':
-
+    try:
+        # Parse arguments, use file docstring as a parameter definition
+        arguments = docopt.docopt(__doc__)
+        basepdf = arguments['<basepdf>']
+        forceUpdate =  arguments['--force-update'] == True
+        print arguments
+    # Handle invalid options
+    except docopt.DocoptExit as e:
+        print e.message
+        stopthen
+        
+    create_individualized_files(basepdf,classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=forceUpdate)
+    #'MT2-MC-.pdf'
+    stophere
     """ 
-Name your source PDF file with a name ending in "-.pdf".  This way, the hyphen will separate the rest of the name from the students' identities.
     """
     create_individualized_files('MT2-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False, )
     emailEachStudent('MT2-MC-',subject="[ENVR 201] Solutions for MT2 multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
