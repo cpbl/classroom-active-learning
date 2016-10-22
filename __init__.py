@@ -1,4 +1,4 @@
 from classroomActiveLearning import *
-import cpblLaTeXexams
-import speedDatingSchedule
-import individualizeFiles
+from cpblLaTeXexams  import *
+from speedDatingSchedule  import *
+from individualizeFiles  import *
