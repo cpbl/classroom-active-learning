@@ -72,30 +72,10 @@ def display_speed_dates(schedule):
 
 
 if __name__ == "__main__":
+    # Do not put actual names into something that will go into the repo. Instead, copy the code below into a local file
     datesched=schedule_speed_dates([L for L in """
-Jennifer Yoon
-Ava Liu
-Katie Tully
-Daria Khadir
-Tianyu Zhang
-Arianna Fisher
-""".split('\n') if L.strip()])
-
+sample name1
+sample name2
+sample name3
+    """.split('\n') if L.strip().strip(',') and not L.strip().startswith('#')])
     display_speed_dates(datesched)    
-    """
-Tasha
-Antonia
-
-Karen Lam
-
-Ari
-Chris
-David
-Frank
-Jill
-Kristin
-Daniel
-Heather
-
-"""
-

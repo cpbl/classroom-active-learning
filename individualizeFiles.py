@@ -1,4 +1,5 @@
 #!/usr/bin/python
+__author__="CPBL"
 """
 Usage:
  individualizeFiles.py <basepdf>  [options]
@@ -35,7 +36,7 @@ It also provides one or two ways to distribute them, either by automated individ
 
 The tools assume you're using GNU/Linux, so probably MacOS can do it all with ease, also. 
 
-CPBL 2015.
+
 """
 
 """
@@ -218,18 +219,11 @@ if __name__ == '__main__':
         stopthen
     assert basepdf.endswith('.pdf')
     
-    create_individualized_files(basepdf,classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=forceUpdate)
-    emailEachStudent(os.path.split(basepdf)[1][:-4],subject="[ENVR 201] Solutions for MT multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
+    # Do not put actual messages/names here, which will get uploaded to the repo. Instead, copy the code below to a separate file
+    create_individualized_files(basepdf, classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=forceUpdate)
 
+    emailEachStudent(os.path.split(basepdf)[1][:-4], subject="[ENVR 201] Solutions for  multiple choice", body="
+    # Do not put actual messages/names here, which will get uploaded to the repo. Instead, copy the code below to a separate file
+Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. They may not be in the same order as the questions on your own exam. The attached file is for you only; please do not share it or your own exam.", classlistfile='/home/meuser/courses/201/classlist.csv')
 
     stophere
-    """
-    #'MT2-MC-.pdf'
-    create_individualized_files('MT2-MC-.pdf',classlistfile='/home/meuser/courses/201/classlist.csv',  forceUpdate=False, )
-    emailEachStudent(basepdf[:-4],subject="[ENVR 201] Solutions for MT multiple choice",body="Hello. I'm sending you a copy of the answers to the multiple choice questions on the last midterm. The attached file is individualized; please do not share it.",classlistfile='/home/meuser/courses/201/classlist.csv')
-    """
-    #Notes: 2015: .htpasswd file is /etc/meuser-htpasswd   I am using httpd.conf entries rather than .htaccess.
-
-  # A nicer way to do all of this might be with .htaccess files without username:
-#  http://stackoverflow.com/questions/12112917/htacess-protection-folder-without-username
- # Or else do the authentication using PHP rather than apache's.??   Is this useful: http://php.net/manual/en/features.http-auth.php 
